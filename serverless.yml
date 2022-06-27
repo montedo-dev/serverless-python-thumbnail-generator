@@ -1,0 +1,45 @@
+org: montedo
+app: aws-python-thumbnail-example
+service: aws-python-thumbnail-example
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  iam:
+    role:
+      statements:
+        - Effect: 'Allow'
+          Resource: '*'
+          Action: 's3:*' 
+        
+  runtime: python3.8
+  region: sa-east-1
+  profile: serverless-admin
+  stage: dev
+  timeout: 10
+  memorySize: 128
+  environment:
+    THUMBNAIL_SIZE: 128
+    REGION_NAME: ${self:provider.region}
+
+
+custom:
+   bucket: example-thumbnails
+   pythonRequirements:
+    dockerizePip: true
+
+functions:
+  s3_thumbnail_generator:
+    handler: handler.s3_thumbnail_generator
+    layers:
+    - arn:aws:lambda:sa-east-1:770693421928:layer:Klayers-p38-Pillow:3
+    events:
+      - s3:
+          bucket: ${self:custom.bucket}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .png
+
+plugins:
+  - serverless-python-requirements
