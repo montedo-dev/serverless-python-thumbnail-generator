@@ -11,6 +11,8 @@ from PIL import Image, ImageOps
 
 s3 = boto3.client('s3')
 size = int(os.environ['THUMBNAIL_SIZE'])
+dynamodb = boto3.resource('dynamodb', region_name=str(os.environ['REGION_NAME']))
+dbtable = str(os.environ['DYNAMODB_TABLE'])
 
 def s3_thumbnail_generator(event, context):
     
@@ -65,8 +67,25 @@ def uploadToS3(bucket, key, image, imageSize):
     url = '{}/{}/{}'.format(s3.meta.endpoint_url, bucket, key)
 
     # save image url to db:
-    saveInfoOnDynamo(url_path= url, imgSize= imgSize)
+    saveInfoOnDynamo(urlPath=url, imgSize=size)
     return url
-        
-def saveInfoOnDynamo(url, imgSize):
-    return null
+
+def saveInfoOnDynamo(urlPath, imgSize):
+    toint = float(imgSize*0.53)/1000
+    table = dynamodb.Table(dbtable)
+    response = table.put_item(
+        Item={
+            'id': str(uuid.uuid4()),
+            'url': str(urlPath),
+            'approxReducedSize': str(toint) + str(' KB'),
+            'createdAt': str(datetime.now()),
+            'updatedAt': str(datetime.now())
+        }
+    )
+
+# get all image urls from the bucked and show in a json format
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps(response)
+    }

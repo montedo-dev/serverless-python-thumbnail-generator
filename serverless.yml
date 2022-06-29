@@ -12,6 +12,16 @@ provider:
         - Effect: 'Allow'
           Resource: '*'
           Action: 's3:*' 
+        - Effect: 'Allow'
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
         
   runtime: python3.8
   region: sa-east-1
@@ -22,10 +32,12 @@ provider:
   environment:
     THUMBNAIL_SIZE: 128
     REGION_NAME: ${self:provider.region}
+    DYNAMODB_TABLE: ${self:custom.dynamoTable}
 
 
 custom:
    bucket: example-thumbnails
+   dynamoTable: img-url-table
    pythonRequirements:
     dockerizePip: true
 
@@ -40,6 +52,21 @@ functions:
           event: s3:ObjectCreated:*
           rules:
             - suffix: .png
+resources:
+  Resources:
+    ImagesDynamoDbTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
 
 plugins:
   - serverless-python-requirements
